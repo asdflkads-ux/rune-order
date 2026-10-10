@@ -54,7 +54,7 @@ body.touch #stat{width:170px}
 <div id="hud">
   <div id="stat"><div class="bar" id="hpb"><i></i></div><div class="bar" id="shb" style="height:4px;margin-top:2px"><i></i></div><div class="bar" id="xpb"><i></i></div><div id="stxt"></div></div>
   <div id="wave"></div>
-  <div id="ver" style="position:absolute;left:12px;bottom:8px;font-size:11px;color:#a39db4;text-shadow:0 1px 3px #000">v3 · Q W E R</div>
+  <div id="ver" style="position:absolute;left:12px;bottom:8px;font-size:11px;color:#a39db4;text-shadow:0 1px 3px #000">v4 · 속성 없음</div>
   <div id="help">마우스 오른쪽 클릭 · 방향키 이동<br>Q W E 룬 스킬 (마우스 쪽으로) · R 교환 / 공명<br>기본 공격은 자동</div>
   <div id="runes"></div>
   <div id="skills"></div>
@@ -90,9 +90,9 @@ var HERO={pal:{h:"#5fc4bb",H:"#2f8f8a",s:"#f0c8a0",e:"#1a1622",a:"#2a6f78",c:"#1
         "...kkbbybbbkk...","..kaaaaaaaaaak..","..kacaaaaaacak..","..ksaaaaaaaask..","..kkaaaaaaaakk..","...kaaaaaaaak...","...kcccccccck..."],
   legs:[["....kddkkddk....","....kddkkddk....","....kDDkkDDk....","....kkkkkkkk....","................"],["....kddkkddk....","...kddk..kddk...","...kDDk..kDDk...","...kkkk..kkkk...","................"]]};
 var RUNE_PIX={
-  fire:{pal:{o:"#ff8a3a",y:"#ffe07a"},rows:["...kk...","..kook..",".kooyok.",".koyyok.","kooyyook","koyyyyok",".koyyok.","..kkkk.."]},
-  ice:{pal:{i:"#8fd0ff",w:"#ffffff",I:"#4f8fd0"},rows:["...kk...","..kiik..",".kiwiik.","kiwiiiik","kiiiiIIk",".kiiIIk.","..kIIk..","...kk..."]},
-  wind:{pal:{g:"#8fe6a0",G:"#4fb870"},rows:["..kkkk..",".kgGGgk.","kgGkkGgk","kGk.kgGk","kGkkggGk","kgGGGgk.",".kgggk..","..kkk..."]}
+  q:{pal:{o:"#ff8a3a",y:"#ffe07a"},rows:["........","..kkkk..",".kooook.","kooyyook","kooyyook",".kooook.","..kkkk..","........"]},
+  w:{pal:{i:"#8fd0ff",w:"#ffffff",I:"#4f8fd0"},rows:["...kk...","..kiik..","..kiik..",".kiwIik.",".kiIIik.","kiiiiiik","kkkkkkkk","........"]},
+  e:{pal:{g:"#8fe6a0",G:"#4fb870"},rows:["...kk...","..kggk..",".kgkkgk.","kgk..kgk","kgk..kgk",".kgkkgk.","..kGGk..","...kk..."]}
 };
 var MOB_PIX={
   imp:["................","..k..........k..","..kk........kk..","..kakkkkkkkkak..","...kaaaaaaaak...","..kaaeaaaaeaak..","..kaaekaakeaak..","..kaaaaaaaaaak..","..kaakwwwwkaak..","...kaaaaaaaak...","..kkAAAAAAAAkk..",".kakAAAAAAAAkak.",".kk.kAAAAAAk.kk.","....kAAkkAAk....","....kaak.kaak...","....kkkk.kkkk..."],
@@ -115,31 +115,31 @@ function buildSprites(){
 }
 
 /* ═══════════ 룬 — 이 게임의 핵심 규칙 ═══════════
-   보관 칸 1 + 대기 칸 5. 합쳐서 불·서리·바람이 2개씩. 같은 룬은 바로 이어 나오지 않는다.
-   Q·W·E 를 쓰면 대기 맨 앞 룬이 소모되고, 그 룬에 따라 스킬 효과가 바뀐다.
-   보관 룬과 맨 앞 룬이 같으면 R 이 '공명' — 둘을 함께 태워 큰 기술. 다르면 R 은 '교환'(보관 ↔ 맨 앞).
-   대기 칸을 다 쓰면 잠깐 충전한 뒤 새로 배열된다. */
-var RUNES=["fire","ice","wind"], RN={fire:"불",ice:"서리",wind:"바람"}, RCOL={fire:"#ff8a3a",ice:"#8fd0ff",wind:"#8fe6a0"};
+   룬은 스킬 세 가지(Q · W · E)의 표식이다. 속성은 없다.
+   보관 칸 1 + 대기 칸 5. 합쳐서 Q · W · E 가 2개씩. 같은 룬은 바로 이어 나오지 않는다.
+   Q · W · E 중 무엇을 쓰든 대기 맨 앞 룬이 하나 소모된다 (각 스킬은 자기 재사용 대기가 있다).
+   보관 룬과 맨 앞 룬이 같아지면 그 룬의 스킬이 '강화'된다 — 그 키를 누르면 재사용 대기와 상관없이 강화 스킬이 나가고, 두 룬이 함께 사라진다.
+   강화는 한 배열(한 턴)에 한 번뿐: 쓰고 나면 보관 칸이 비고, 대기 칸을 다 써서 새로 배열될 때 다시 채워진다.
+   R 은 보관 룬 ↔ 맨 앞 룬 교환 (재사용 대기 없음). */
+var RUNES=["q","w","e"], RCOL={q:"#ff8a3a",w:"#8fd0ff",e:"#8fe6a0"};
 var Q={stored:null,act:[],recharge:0};
 function deal(){
-  if(!Q.stored) Q.stored=RUNES[Math.floor(Math.random()*3)];
+  Q.stored=RUNES[Math.floor(Math.random()*3)];
   var pool=[]; RUNES.forEach(function(r){ pool.push(r); if(r!==Q.stored) pool.push(r); });
   for(var t=0;t<200;t++){ for(var i=pool.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)), tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
     var ok=pool[0]!==Q.stored; for(var k=1;k<pool.length&&ok;k++) if(pool[k]===pool[k-1]) ok=false; if(ok) break; }
   Q.act=pool.slice(); Q.recharge=0;
 }
-function frontRune(){ return Q.act.length?Q.act[0]:null; }
-function consume(){ var r=Q.act.shift(); if(!Q.act.length){ Q.recharge=RECHARGE; H.haste=Math.max(H.haste,RECHARGE); } return r; }
-function resoMatch(){ return Q.act.length&&Q.stored&&Q.stored===Q.act[0]; }
-function canReso(){ return resoMatch()&&H&&H.rs<=0; }
-var RECHARGE=1.4, RESO_CD=7;
+function useRune(){ Q.act.shift(); if(!Q.act.length){ Q.recharge=RECHARGE; H.haste=Math.max(H.haste,RECHARGE); } }
+function enhKey(){ return (Q.act.length&&Q.stored&&Q.stored===Q.act[0])?Q.stored:null; }      // 지금 강화된 스킬 (없으면 null)
+var RECHARGE=1.4;
 
 /* ═══════════ 세계 ═══════════ */
 var TS=16, MW=56, MH=38, AW=MW*TS, AH=MH*TS;
 var PILLARS=[], GROUND=null;
 var H=null, MOBS=[], SHOTS=[], ZONES=[], MARKS=[], FX=[], TXT=[], COINS=[];
 var wave=0, waveT=2.5, T0=0, state="title", shake=0, HS=0, best=0;
-function newHero(){ return {x:AW/2,y:AH/2,r:5,hp:120,mhp:120,sh:0,shT:0,atk:10,spd:72,face:1,cd:0,q:0,w:0,e:0,r4:0,rs:0,haste:0,lvl:1,exp:0,gold:0,hit:0,moving:false,inv:0}; }
+function newHero(){ return {x:AW/2,y:AH/2,r:5,hp:120,mhp:120,sh:0,shT:0,atk:10,spd:72,face:1,cd:0,q:0,w:0,e:0,haste:0,lvl:1,exp:0,gold:0,hit:0,moving:false,inv:0}; }
 function need(l){ return 20+l*16; }
 function buildGround(){
   var c=document.createElement("canvas"); c.width=AW; c.height=AH; var g=c.getContext("2d"), x,y,i;
@@ -211,57 +211,50 @@ function mobAI(m,dt){
   else { if(d>m.r+H.r+1) moveEnt(m,dx*sp*dt,dy*sp*dt); else if(m.cd<=0){ m.cd=0.9; hurtHero(m.dmg); } }
 }
 
-/* ═══════════ 스킬 — 맨 앞 룬에 따라 달라진다 ═══════════ */
+/* ═══════════ 스킬 — Q 피해 · W 제어 · E 회복. 각각 강화판이 있다 ═══════════ */
 var SKD={
-  q:{n:"룬 탄환",cd:1.3,d:{fire:"맞으면 폭발 · 화상",ice:"첫 적을 얼린다",wind:"빠르게 꿰뚫고 순풍 길"}},
-  w:{n:"룬 진",cd:5,d:{fire:"불타는 바닥 (지속)",ice:"범위 안 전부 얼림",wind:"즉시 터지며 밀어낸다"}},
-  e:{n:"룬 표식",cd:4,d:{fire:"넓고 큰 폭발",ice:"폭발 + 얼림",wind:"폭발 + 내 체력 회복"}},
-  r:{n:"교환",cd:0,reso:{fire:"대화염 — 거대한 불덩이",ice:"빙결 폭풍 — 주변 전부 얼림",wind:"순풍의 축복 — 회복 · 보호막"}}
+  q:{n:"룬 탄환",cd:1.6,d:"마우스 쪽으로 쏜다 · 맞으면 작은 폭발",en:"대룬탄",ed:"거대한 탄 — 큰 폭발 + 화상"},
+  w:{n:"룬 진",cd:6,d:"가리킨 곳에 진 · 잠시 뒤 얼림",en:"빙결 진",ed:"넓은 진 — 큰 피해 + 오래 얼림"},
+  e:{n:"룬 표식",cd:5,d:"가리킨 곳에 표식 · 터지며 회복",en:"수호 표식",ed:"큰 폭발 + 회복 · 보호막 · 가속"},
+  r:{n:"교환",cd:0}
 };
-function aimDir(){ if(AIM.on){ var d=Math.hypot(AIM.x-H.x,AIM.y-H.y)||1; return [(AIM.x-H.x)/d,(AIM.y-H.y)/d,Math.min(d,120)]; }
-  var t=nearest(160); if(t){ var d2=dist(t,H)||1; return [(t.x-H.x)/d2,(t.y-H.y)/d2,Math.min(d2,120)]; } return [H.face,0,60]; }
+var RANGE=130;
+/* 조준 — 마우스 화면 위치를 쓰는 순간의 세계 좌표로 바꾼다 (카메라가 움직여도 어긋나지 않게) */
+function aimPoint(){
+  if(AIM.on) return {x:cam.x+AIM.sx*DPR/DOT, y:cam.y+AIM.sy*DPR/DOT};
+  var t=nearest(170); return t?{x:t.x,y:t.y}:{x:H.x+H.face*60,y:H.y};
+}
+function aimAt(maxR){ var p=aimPoint(), dx=p.x-H.x, dy=p.y-H.y, d=Math.hypot(dx,dy)||1, r=Math.min(d,maxR||RANGE); return {dx:dx/d,dy:dy/d,x:H.x+dx/d*r,y:H.y+dy/d*r}; }
 function nearest(rg,p){ var b=null, bd=rg; p=p||H; MOBS.forEach(function(m){ if(m.hp<=0) return; var d=dist(m,p)-m.r; if(d<bd){ bd=d; b=m; } }); return b; }
 function inR(x,y,r){ return MOBS.filter(function(m){ return m.hp>0&&Math.hypot(m.x-x,m.y-y)<r+m.r; }); }
 function freeze(m,t){ m.frz=Math.max(m.frz,m.M.boss?t*0.4:t); m.pat=null; }
 function cast(key){
-  if(state!=="play"||H.hp<=0) return;
-  if(key==="r"){ castR(); return; }
-  if(H[key]>0||!Q.act.length) return;
-  var rune=consume(), a=aimDir(), A=H.atk, col=RCOL[rune]; H[key]=SKD[key].cd; H.face=a[0]<0?-1:1;
-  num(H.x,H.y-40,RN[rune]+" "+SKD[key].n,col,11);
-  if(key==="q"){ var sp=rune==="wind"?330:210; SHOTS.push({side:0,sk:"q",rune:rune,x:H.x,y:H.y-6,vx:a[0]*sp,vy:a[1]*sp,dmg:A*(rune==="wind"?1.8:2.2),life:rune==="wind"?0.7:1.1,r:4,hitL:{}}); }
-  else if(key==="w"){ var zx=H.x+a[0]*a[2], zy=H.y+a[1]*a[2]; ZONES.push({k:"sigil",rune:rune,x:zx,y:zy,r:30,tele:rune==="wind"?0.05:0.6,T:0.6,dur:rune==="fire"?3.5:0,tick:0}); }
-  else if(key==="e"){ var px=H.x+a[0]*a[2], py=H.y+a[1]*a[2], tg=nearest(46,{x:px,y:py}); MARKS.push({rune:rune,m:tg,x:tg?tg.x:px,y:tg?tg.y:py,t:0.9,r:rune==="fire"?40:26}); }
+  if(state!=="play"||H.hp<=0||!Q.act.length) return;
+  if(key==="r"){ if(!Q.stored) return; var t=Q.stored; Q.stored=Q.act[0]; Q.act[0]=t; num(H.x,H.y-40,"교환","#f0c35a",11); ring(H.x,H.y-10,3,14,"#f0c35a",0.25); return; }
+  var enh=enhKey()===key;
+  if(!enh&&H[key]>0) return;                                                // 강화 스킬은 재사용 대기와 상관없이 나간다
+  var a=aimAt(), A=H.atk, col=RCOL[key]; H.face=a.dx<0?-1:1;
+  useRune(); if(enh){ Q.stored=null; HS=0.08; shake=0.2; ring(H.x,H.y,6,40,col,0.45); num(H.x,H.y-44,"강화 — "+SKD[key].en,col,15); } else { H[key]=SKD[key].cd; num(H.x,H.y-40,SKD[key].n,col,11); }
+  if(key==="q"){ if(enh) SHOTS.push({side:0,sk:"big",x:H.x,y:H.y-6,vx:a.dx*160,vy:a.dy*160,dmg:A*7,life:1.3,r:8});
+    else SHOTS.push({side:0,sk:"q",x:H.x,y:H.y-6,vx:a.dx*230,vy:a.dy*230,dmg:A*2.4,life:1.0,r:4}); }
+  else if(key==="w") ZONES.push({x:a.x,y:a.y,r:enh?64:30,tele:enh?0.35:0.5,T:enh?0.35:0.5,enh:enh});
+  else if(key==="e"){ var tg=nearest(14,a); MARKS.push({m:tg,x:tg?tg.x:a.x,y:tg?tg.y:a.y,t:enh?0.6:0.8,T:enh?0.6:0.8,r:enh?50:28,enh:enh}); }
 }
-function castR(){
-  if(!Q.act.length) return;
-  if(resoMatch()&&H.rs>0) return;                                           // 공명 준비 중 — 교환으로 흩뜨리지 않게 막는다
-  if(canReso()){ var rune=Q.stored, a=aimDir(), A=H.atk; H.rs=RESO_CD; Q.act.shift(); Q.stored=Q.act.length?Q.act.shift():null; if(!Q.act.length){ Q.recharge=RECHARGE; H.haste=Math.max(H.haste,RECHARGE); }
-    num(H.x,H.y-44,"공명 — "+SKD.r.reso[rune].split(" — ")[0],RCOL[rune],15); HS=0.1; shake=0.25; ring(H.x,H.y,6,46,RCOL[rune],0.5);
-    if(rune==="fire") SHOTS.push({side:0,sk:"big",rune:"fire",x:H.x,y:H.y-6,vx:a[0]*150,vy:a[1]*150,dmg:A*6,life:1.4,r:8});
-    else if(rune==="ice"){ inR(H.x,H.y,90).forEach(function(m){ hurtMob(m,A*3,RCOL.ice); freeze(m,2.2); m.slow=5; }); ring(H.x,H.y,10,90,RCOL.ice,0.6); boom(H.x,H.y,90,"ice"); }
-    else { H.hp=Math.min(H.mhp,H.hp+H.mhp*0.35); H.sh=Math.round(H.mhp*0.25); H.shT=6; H.haste=4; num(H.x,H.y-30,"+"+fmt(H.mhp*0.35),"#6fe39a",14);
-      inR(H.x,H.y,60).forEach(function(m){ var d=dist(m,H)||1; if(!m.M.boss) moveEnt(m,(m.x-H.x)/d*50,(m.y-H.y)/d*50); hurtMob(m,A*1.5,RCOL.wind); }); ring(H.x,H.y,10,60,RCOL.wind,0.6); }
-    return; }
-  if(!Q.stored) return;                                                     // 교환은 재사용 대기 없이 바로
-  var t=Q.stored; Q.stored=Q.act[0]; Q.act[0]=t; num(H.x,H.y-40,"교환","#f0c35a",11); ring(H.x,H.y-10,3,14,"#f0c35a",0.25);
-}
-function qHit(s,m){
-  var A=s.dmg;
-  if(s.sk==="big"){ inR(s.x,s.y,60).forEach(function(o){ hurtMob(o,A,RCOL.fire); o.burn=4; o.burnD=H.atk*0.8; }); boom(s.x,s.y,60,"fire"); shake=0.35; HS=0.1; return true; }
-  if(s.rune==="fire"){ inR(s.x,s.y,22).forEach(function(o){ hurtMob(o,A,RCOL.fire); o.burn=3; o.burnD=H.atk*0.4; }); boom(s.x,s.y,22,"fire"); return true; }
-  if(s.rune==="ice"){ hurtMob(m,A,RCOL.ice); freeze(m,1.0); ring(m.x,m.y,3,14,RCOL.ice); return true; }
-  if(!s.hitL[MOBS.indexOf(m)]){ s.hitL[MOBS.indexOf(m)]=1; hurtMob(m,A,RCOL.wind); } return false;
+function qHit(s){
+  var big=s.sk==="big", r=big?58:16;
+  inR(s.x,s.y,r).forEach(function(o){ hurtMob(o,s.dmg,RCOL.q); if(big){ o.burn=4; o.burnD=H.atk*0.8; } });
+  boom(s.x,s.y,r,"fire"); if(big){ shake=0.35; HS=0.1; }
 }
 
 /* ═══════════ 입력 ═══════════ */
-var KEYS={}, AIM={on:false,x:0,y:0}, TOUCH=("ontouchstart" in window)||(window.matchMedia&&matchMedia("(pointer:coarse)").matches), JOY={id:null,ox:0,oy:0,vx:0,vy:0};
+var KEYS={}, AIM={on:false,sx:0,sy:0}, TOUCH=("ontouchstart" in window)||(window.matchMedia&&matchMedia("(pointer:coarse)").matches), JOY={id:null,ox:0,oy:0,vx:0,vy:0};
 if(TOUCH) document.body.classList.add("touch");
 /* 스킬은 Q W E R — 그래서 이동은 방향키 또는 마우스 오른쪽 클릭(누른 곳으로 걸어간다) */
 var MOVE={ArrowUp:"w",ArrowLeft:"a",ArrowDown:"s",ArrowRight:"d"}, SKEY={KeyQ:"q",KeyW:"w",KeyE:"e",KeyR:"r",Space:"r",Digit1:"q",Digit2:"w",Digit3:"e",Digit4:"r"};
 var GOTO={on:false,x:0,y:0,held:false};
 document.addEventListener("keydown",function(e){ if(MOVE[e.code]){ KEYS[MOVE[e.code]]=1; GOTO.on=false; e.preventDefault(); } else if(SKEY[e.code]){ if(!e.repeat) cast(SKEY[e.code]); e.preventDefault(); } });
 document.addEventListener("keyup",function(e){ if(MOVE[e.code]) KEYS[MOVE[e.code]]=0; });
+window.addEventListener("pointermove",function(e){ if(e.pointerType==="mouse"){ AIM.on=true; AIM.sx=e.clientX; AIM.sy=e.clientY; } });
 window.addEventListener("blur",function(){ KEYS={}; });
 
 /* ═══════════ 갱신 ═══════════ */
@@ -271,7 +264,7 @@ function update(dt){
   if(!mx&&!my&&GOTO.on){ var gd=Math.hypot(GOTO.x-H.x,GOTO.y-H.y); if(gd<2&&!GOTO.held) GOTO.on=false; else if(gd>=2){ mx=(GOTO.x-H.x)/gd; my=(GOTO.y-H.y)/gd; } }
   var ml=Math.hypot(mx,my), sp=H.spd*(H.haste>0?1.35:1); H.moving=ml>0.1;
   if(H.moving){ var k=Math.min(1,ml); moveEnt(H,mx/ml*k*sp*dt,my/ml*k*sp*dt); if(Math.abs(mx)>0.2) H.face=mx<0?-1:1; }
-  ["q","w","e","r4","rs","haste","hit","inv"].forEach(function(f){ if(H[f]>0) H[f]-=dt; });
+  ["q","w","e","haste","hit","inv"].forEach(function(f){ if(H[f]>0) H[f]-=dt; });
   if(H.shT>0){ H.shT-=dt; if(H.shT<=0) H.sh=0; }
   if(Q.recharge>0){ Q.recharge-=dt; if(Q.recharge<=0) deal(); }
   H.cd-=dt; if(H.cd<=0){ var t=nearest(95); if(t){ H.cd=0.7; var d=dist(t,H)||1; H.face=t.x<H.x?-1:1; SHOTS.push({side:0,sk:"a",x:H.x,y:H.y-6,vx:(t.x-H.x)/d*200,vy:(t.y-H.y)/d*200,dmg:H.atk,life:0.6,r:2}); } }
@@ -280,25 +273,20 @@ function update(dt){
   MOBS=MOBS.filter(function(m){ return m.hp>0; });
   for(i=SHOTS.length-1;i>=0;i--){ var s=SHOTS[i]; s.x+=s.vx*dt; s.y+=s.vy*dt; s.life-=dt; var gone=s.life<=0||s.x<2*TS||s.y<2*TS||s.x>AW-2*TS||s.y>AH-2*TS;
     if(!gone) for(var pi=0;pi<PILLARS.length;pi++) if(Math.hypot(s.x-PILLARS[pi].x,s.y-PILLARS[pi].y)<PILLARS[pi].r+1){ gone=true; break; }
-    if(s.side===0&&s.rune==="wind"&&s.sk==="q"){ s.tr=(s.tr||0)-dt; if(s.tr<=0){ s.tr=0.05; ZONES.push({k:"gale",x:s.x,y:s.y,r:12,dur:3,tele:0}); } }
     if(!gone){
-      if(s.side===0){ for(var mi=0;mi<MOBS.length;mi++){ var m=MOBS[mi]; if(m.hp>0&&Math.hypot(m.x-s.x,m.y-s.y)<m.r+s.r){ if(s.sk==="a"){ hurtMob(m,s.dmg,"#e8e4f0"); gone=true; } else gone=qHit(s,m); if(gone) break; } } }
+      if(s.side===0){ for(var mi=0;mi<MOBS.length;mi++){ var m=MOBS[mi]; if(m.hp>0&&Math.hypot(m.x-s.x,m.y-s.y)<m.r+s.r){ if(s.sk==="a") hurtMob(m,s.dmg,"#e8e4f0"); else qHit(s); gone=true; break; } } }
       else if(Math.hypot(H.x-s.x,H.y-6-s.y)<H.r+s.r){ hurtHero(s.dmg); gone=true; } }
-    else if(s.side===0&&(s.sk==="big"||(s.sk==="q"&&s.rune==="fire"))) qHit(s,null);
+    else if(s.side===0&&s.sk!=="a") qHit(s);
     if(gone) SHOTS.splice(i,1); }
-  for(i=ZONES.length-1;i>=0;i--){ var z=ZONES[i];
-    if(z.k==="gale"){ z.dur-=dt; if(dist(z,H)<z.r+4) H.haste=Math.max(H.haste,0.3); if(z.dur<=0) ZONES.splice(i,1); continue; }
-    if(z.tele>0){ z.tele-=dt; if(z.tele<=0){ var A=H.atk;
-        if(z.rune==="ice"){ inR(z.x,z.y,z.r).forEach(function(m){ hurtMob(m,A*1.5,RCOL.ice); freeze(m,1.3); }); boom(z.x,z.y,z.r,"ice"); }
-        else if(z.rune==="wind"){ inR(z.x,z.y,z.r).forEach(function(m){ hurtMob(m,A*1.6,RCOL.wind); var d=dist(m,z)||1; if(!m.M.boss) moveEnt(m,(m.x-z.x)/d*40,(m.y-z.y)/d*40); }); ring(z.x,z.y,4,z.r,RCOL.wind,0.4); }
-        else boom(z.x,z.y,z.r,"fire");
-        if(!z.dur){ ZONES.splice(i,1); } } continue; }
-    z.dur-=dt; z.tick-=dt; if(z.tick<=0){ z.tick=0.5; inR(z.x,z.y,z.r).forEach(function(m){ hurtMob(m,H.atk*0.9,RCOL.fire); }); } if(z.dur<=0) ZONES.splice(i,1); }
+  for(i=ZONES.length-1;i>=0;i--){ var z=ZONES[i]; z.tele-=dt;
+    if(z.tele<=0){ var A=H.atk; inR(z.x,z.y,z.r).forEach(function(m){ hurtMob(m,A*(z.enh?3.5:1.8),RCOL.w); freeze(m,z.enh?2.4:1.2); if(z.enh) m.slow=5; });
+      boom(z.x,z.y,z.r,"ice"); if(z.enh){ shake=Math.max(shake,0.2); } ZONES.splice(i,1); } }
   for(i=MARKS.length-1;i>=0;i--){ var k2=MARKS[i]; if(k2.m&&k2.m.hp>0){ k2.x=k2.m.x; k2.y=k2.m.y; } k2.t-=dt;
-    if(k2.t<=0){ var hit=inR(k2.x,k2.y,k2.r), A2=H.atk;
-      if(k2.rune==="fire"){ hit.forEach(function(m){ hurtMob(m,A2*3.2,RCOL.fire); }); boom(k2.x,k2.y,k2.r,"fire"); shake=Math.max(shake,0.15); }
-      else if(k2.rune==="ice"){ hit.forEach(function(m){ hurtMob(m,A2*2,RCOL.ice); freeze(m,1.2); }); boom(k2.x,k2.y,k2.r,"ice"); }
-      else { hit.forEach(function(m){ hurtMob(m,A2*2,RCOL.wind); }); ring(k2.x,k2.y,4,k2.r,RCOL.wind,0.4); if(hit.length){ var hv=H.mhp*Math.min(0.24,0.08*hit.length); H.hp=Math.min(H.mhp,H.hp+hv); num(H.x,H.y-30,"+"+fmt(hv),"#6fe39a",13); } }
+    if(k2.t<=0){ var hit=inR(k2.x,k2.y,k2.r), A2=H.atk; hit.forEach(function(m){ hurtMob(m,A2*(k2.enh?4:2.4),RCOL.e); });
+      ring(k2.x,k2.y,4,k2.r,RCOL.e,0.4); boom(k2.x,k2.y,k2.r*0.7,"leaf");
+      var hv=k2.enh?H.mhp*0.3:(hit.length?H.mhp*Math.min(0.18,0.06*hit.length):0);
+      if(hv){ H.hp=Math.min(H.mhp,H.hp+hv); num(H.x,H.y-30,"+"+fmt(hv),"#6fe39a",13); }
+      if(k2.enh){ H.sh=Math.round(H.mhp*0.25); H.shT=6; H.haste=Math.max(H.haste,4); shake=Math.max(shake,0.2); }
       MARKS.splice(i,1); } }
   for(i=COINS.length-1;i>=0;i--){ var c=COINS[i]; c.t+=dt; var dc=dist(c,H); if(dc<40&&c.t>0.3){ c.x+=(H.x-c.x)/dc*140*dt; c.y+=(H.y-c.y)/dc*140*dt; } if(dc<7){ H.gold+=c.v; COINS.splice(i,1); } }
   for(i=FX.length-1;i>=0;i--){ FX[i].t+=dt; if(FX[i].t>=FX[i].life) FX.splice(i,1); }
@@ -313,9 +301,9 @@ function fit(){ DPR=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(
 window.addEventListener("resize",fit);
 function R(v){ return Math.round(v); }
 function drawRunesOver(){
-  var n=Q.act.length, w=(n+1)*9+3, x0=R(H.x-w/2), y0=R(H.y-44);
-  if(Q.stored){ cx.fillStyle="#f0c35a"; cx.fillRect(x0-1,y0-1,10,10); cx.fillStyle=PIXK; cx.fillRect(x0,y0,8,8); cx.drawImage(SPR.rune[Q.stored],x0,y0); }
-  for(var i=0;i<n;i++){ var rx=x0+12+i*9; if(i===0&&canReso()&&Math.floor(T0*8)%2){ cx.fillStyle="#fff"; cx.fillRect(rx-1,y0-1,10,10); } cx.globalAlpha=i===0?1:0.8; cx.drawImage(SPR.rune[Q.act[i]],rx,y0+(i===0?-1:0)); cx.globalAlpha=1; }
+  var n=Q.act.length, w=(n+1)*9+3, x0=R(H.x-w/2), y0=R(H.y-44), en=enhKey();
+  cx.fillStyle="#f0c35a"; cx.fillRect(x0-1,y0-1,10,10); cx.fillStyle=PIXK; cx.fillRect(x0,y0,8,8); if(Q.stored) cx.drawImage(SPR.rune[Q.stored],x0,y0);
+  for(var i=0;i<n;i++){ var rx=x0+12+i*9; if(i===0&&en&&Math.floor(T0*8)%2){ cx.fillStyle="#fff"; cx.fillRect(rx-1,y0-2,10,10); } cx.globalAlpha=i===0?1:0.8; cx.drawImage(SPR.rune[Q.act[i]],rx,y0+(i===0?-1:0)); cx.globalAlpha=1; }
   if(!n){ cx.fillStyle="#a39db4"; var p=1-Q.recharge/RECHARGE; cx.fillRect(x0+12,y0+3,30,2); cx.fillStyle="#f0c35a"; cx.fillRect(x0+12,y0+3,R(30*p),2); }
 }
 function draw(){
@@ -326,11 +314,9 @@ function draw(){
   var sx=0, sy=0; if(shake>0){ shake-=0.016; sx=R(rnd(-2,2)); sy=R(rnd(-2,2)); }
   cx.setTransform(1,0,0,1,0,0); cx.imageSmoothingEnabled=false; cx.fillStyle="#0d0b12"; cx.fillRect(0,0,VW,VH); cx.setTransform(1,0,0,1,-cam.x+sx,-cam.y+sy);
   cx.drawImage(GROUND,0,0);
-  ZONES.forEach(function(z){ var c=z.k==="gale"?"143,230,160":z.rune==="fire"?"255,138,58":z.rune==="ice"?"143,208,255":"143,230,160";
-    if(z.k==="gale"){ cx.fillStyle="rgba("+c+","+(0.12*Math.min(1,z.dur))+")"; cx.beginPath(); cx.arc(R(z.x),R(z.y),z.r,0,7); cx.fill(); return; }
-    if(z.tele>0){ var p=1-z.tele/z.T; cx.fillStyle="rgba("+c+",.18)"; cx.beginPath(); cx.arc(R(z.x),R(z.y),z.r,0,7); cx.fill(); cx.strokeStyle="rgba("+c+",.95)"; cx.lineWidth=1; cx.beginPath(); cx.arc(R(z.x),R(z.y),Math.max(1,z.r*p),0,7); cx.stroke();
-      for(var i=0;i<3;i++){ var a=T0*2+i*2.094; cx.beginPath(); cx.moveTo(R(z.x+Math.cos(a)*z.r),R(z.y+Math.sin(a)*z.r)); cx.lineTo(R(z.x+Math.cos(a+2.094)*z.r),R(z.y+Math.sin(a+2.094)*z.r)); cx.stroke(); } }
-    else { cx.fillStyle="rgba("+c+","+(0.25+Math.sin(T0*10)*0.07)+")"; cx.beginPath(); cx.arc(R(z.x),R(z.y),z.r,0,7); cx.fill(); for(var f=0;f<6;f++){ var fa=f*1.05+T0, fr=z.r*(0.3+((f*37)%10)/14); cx.fillStyle=f%2?"#ffe07a":"#ff8a3a"; cx.fillRect(R(z.x+Math.cos(fa)*fr),R(z.y+Math.sin(fa)*fr-((T0*20+f*5)%6)),2,2); } } });
+  ZONES.forEach(function(z){ var c="143,208,255";
+    var p=1-z.tele/z.T; cx.fillStyle="rgba("+c+",.18)"; cx.beginPath(); cx.arc(R(z.x),R(z.y),z.r,0,7); cx.fill(); cx.strokeStyle="rgba("+c+",.95)"; cx.lineWidth=1; cx.beginPath(); cx.arc(R(z.x),R(z.y),Math.max(1,z.r*p),0,7); cx.stroke();
+    for(var i=0;i<3;i++){ var a=T0*2+i*2.094; cx.beginPath(); cx.moveTo(R(z.x+Math.cos(a)*z.r),R(z.y+Math.sin(a)*z.r)); cx.lineTo(R(z.x+Math.cos(a+2.094)*z.r),R(z.y+Math.sin(a+2.094)*z.r)); cx.stroke(); } });
   MOBS.forEach(function(m){ if(m.pat&&m.pat.k==="slam"){ var p=1-m.pat.t/m.pat.T; cx.fillStyle="rgba(255,70,60,"+(0.16+p*0.2)+")"; cx.beginPath(); cx.arc(R(m.pat.x),R(m.pat.y),m.pat.r,0,7); cx.fill(); cx.strokeStyle="rgba(255,110,90,.95)"; cx.lineWidth=1; cx.beginPath(); cx.arc(R(m.pat.x),R(m.pat.y),Math.max(1,m.pat.r*p),0,7); cx.stroke(); }
     if(m.pat&&m.pat.k==="charge"&&m.pat.tele>0){ cx.save(); cx.translate(R(m.x),R(m.y)); cx.rotate(m.pat.a); cx.fillStyle="rgba(255,70,60,.25)"; cx.fillRect(0,-12,220,24); cx.restore(); } });
   COINS.forEach(function(c){ cx.drawImage(SPR.prop.coin,R(c.x-3),R(c.y-3+Math.sin(T0*6+c.x)*1)); });
@@ -352,16 +338,18 @@ function draw(){
     if(m.burn>0&&Math.floor(T0*10)%2){ cx.fillStyle="#ff8a3a"; cx.fillRect(R(m.x-3),R(foot-sz-2),2,2); cx.fillStyle="#ffe07a"; cx.fillRect(R(m.x+2),R(foot-sz),2,2); }
     if(m.hp<m.mhp||m.M.boss){ var bw=big?(m.M.boss?40:24):14; cx.fillStyle=PIXK; cx.fillRect(R(m.x-bw/2)-1,R(foot-sz-5)-1,bw+2,3); cx.fillStyle="#e05a6b"; cx.fillRect(R(m.x-bw/2),R(foot-sz-5),R(bw*clamp(m.hp/m.mhp,0,1)),1); }
   });
-  MARKS.forEach(function(k){ var c=RCOL[k.rune], p=1-k.t/0.9; cx.strokeStyle=c; cx.lineWidth=1; cx.beginPath(); cx.arc(R(k.x),R(k.y),k.r,0,7); cx.globalAlpha=0.35+p*0.5; cx.stroke(); cx.globalAlpha=1; cx.drawImage(SPR.rune[k.rune],R(k.x-4),R(k.y-22-Math.sin(T0*12)*1)); cx.beginPath(); cx.arc(R(k.x),R(k.y),Math.max(1,k.r*(1-p)),0,7); cx.stroke(); });
+  MARKS.forEach(function(k){ var c=RCOL.e, p=1-k.t/k.T; cx.strokeStyle=c; cx.lineWidth=1; cx.beginPath(); cx.arc(R(k.x),R(k.y),k.r,0,7); cx.globalAlpha=0.35+p*0.5; cx.stroke(); cx.globalAlpha=1; cx.drawImage(SPR.rune.e,R(k.x-4),R(k.y-22-Math.sin(T0*12)*1)); cx.beginPath(); cx.arc(R(k.x),R(k.y),Math.max(1,k.r*(1-p)),0,7); cx.stroke(); });
   SHOTS.forEach(function(s){ var x=R(s.x), y=R(s.y);
     if(s.side===1){ cx.fillStyle="#3a1a4a"; cx.fillRect(x-3,y-3,6,6); cx.fillStyle="#e06ad8"; cx.fillRect(x-2,y-2,4,4); cx.fillStyle="#ffd0f8"; cx.fillRect(x-1,y-1,2,2); return; }
     if(s.sk==="a"){ cx.fillStyle="#e8e4f0"; cx.fillRect(x-1,y-1,3,3); cx.fillStyle="#9fd8d0"; cx.fillRect(R(s.x-s.vx*0.02),R(s.y-s.vy*0.02),2,2); return; }
-    var c=RCOL[s.rune], r=s.sk==="big"?8:4; cx.fillStyle=c; cx.globalAlpha=0.4; cx.fillRect(x-r-1,y-r-1,r*2+2,r*2+2); cx.globalAlpha=1; cx.fillRect(x-r,y-r+1,r*2,r*2-2); cx.fillRect(x-r+1,y-r,r*2-2,r*2); cx.fillStyle="#fff"; cx.fillRect(x-1,y-1,3,3);
+    var c=RCOL.q, r=s.sk==="big"?8:4; cx.fillStyle=c; cx.globalAlpha=0.4; cx.fillRect(x-r-1,y-r-1,r*2+2,r*2+2); cx.globalAlpha=1; cx.fillRect(x-r,y-r+1,r*2,r*2-2); cx.fillRect(x-r+1,y-r,r*2-2,r*2); cx.fillStyle="#fff"; cx.fillRect(x-1,y-1,3,3);
     for(var t=1;t<4;t++){ cx.globalAlpha=0.5-t*0.12; cx.fillStyle=c; cx.fillRect(R(s.x-s.vx*0.02*t),R(s.y-s.vy*0.02*t),r,r); } cx.globalAlpha=1; });
   FX.forEach(function(f){ var p=f.t/f.life;
     if(f.k==="ring"){ cx.globalAlpha=1-p; cx.strokeStyle=f.c; cx.lineWidth=1; cx.beginPath(); cx.arc(R(f.x),R(f.y),Math.max(1,f.r0+(f.r1-f.r0)*p),0,7); cx.stroke(); cx.globalAlpha=1; }
-    else { var cs=f.c==="ice"?["#4f8fd0","#8fd0ff","#ffffff"]:f.c==="dust"?["#5a5560","#8a8494","#c8c2d0"]:["#ff7a3a","#ffc060","#fff3c0"], rr=f.r*(0.5+p*0.5); cx.globalAlpha=(1-p)*0.9;
+    else { var cs=f.c==="ice"?["#4f8fd0","#8fd0ff","#ffffff"]:f.c==="leaf"?["#4fb870","#8fe6a0","#eafff0"]:f.c==="dust"?["#5a5560","#8a8494","#c8c2d0"]:["#ff7a3a","#ffc060","#fff3c0"], rr=f.r*(0.5+p*0.5); cx.globalAlpha=(1-p)*0.9;
       cx.fillStyle=cs[0]; cx.beginPath(); cx.arc(R(f.x),R(f.y),rr,0,7); cx.fill(); cx.fillStyle=cs[1]; cx.beginPath(); cx.arc(R(f.x),R(f.y),rr*0.68,0,7); cx.fill(); cx.fillStyle=cs[2]; cx.beginPath(); cx.arc(R(f.x),R(f.y),rr*0.36,0,7); cx.fill(); cx.globalAlpha=1; } });
+  if(H.hp>0&&AIM.on&&state==="play"){ var ap=aimAt(), ax=R(ap.x), ay=R(ap.y); cx.strokeStyle="rgba(255,255,255,.35)"; cx.lineWidth=1; cx.beginPath(); cx.arc(ax,ay,30,0,7); cx.stroke();
+    cx.fillStyle="#fff"; cx.fillRect(ax-3,ay,2,1); cx.fillRect(ax+2,ay,2,1); cx.fillRect(ax,ay-3,1,2); cx.fillRect(ax,ay+2,1,2); }
   if(H.hp>0) drawRunesOver();
   mcx.fillStyle="#0d0b12"; mcx.fillRect(0,0,cv.width,cv.height); mcx.drawImage(LC,0,0,VW*DOT,VH*DOT);
   mcx.setTransform(DOT,0,0,DOT,(-cam.x+sx)*DOT,(-cam.y+sy)*DOT); mcx.textAlign="center";
@@ -376,37 +364,37 @@ function hud(){
   if(!H) return;
   $("hpb").firstChild.style.width=(H.hp/H.mhp*100)+"%"; $("shb").firstChild.style.width=(H.sh/H.mhp*100)+"%"; $("xpb").firstChild.style.width=(H.exp/need(H.lvl)*100)+"%";
   $("stxt").innerHTML="체력 "+fmt(H.hp)+" / "+H.mhp+" · 레벨 "+H.lvl+" · <span style='color:var(--gold)'>"+fmt(H.gold)+" G</span>";
-  var key=Q.stored+"|"+Q.act.join(",")+"|"+(Q.recharge>0?1:0)+"|"+resoMatch();
+  var en=enhKey(), key=Q.stored+"|"+Q.act.join(",")+"|"+(Q.recharge>0?1:0)+"|"+en;
   if(key!==hudKey){ hudKey=key; var el=$("runes"); el.innerHTML="";
-    var st=document.createElement("div"); st.className="rn st"; if(Q.stored) st.appendChild(runeIcon(Q.stored)); el.appendChild(st);
-    Q.act.forEach(function(r,i){ var d=document.createElement("div"); d.className="rn"+(i===0?" cur":"")+(i===0&&resoMatch()?" reso":""); d.appendChild(runeIcon(r)); el.appendChild(d); });
+    var st=document.createElement("div"); st.className="rn st"; if(Q.stored) st.appendChild(runeIcon(Q.stored)); else st.style.opacity=.35; el.appendChild(st);
+    Q.act.forEach(function(r,i){ var d=document.createElement("div"); d.className="rn"+(i===0?" cur":"")+(i===0&&en?" reso":""); d.appendChild(runeIcon(r)); el.appendChild(d); });
     if(!Q.act.length){ var s=document.createElement("div"); s.id="rchg"; s.textContent="룬을 다시 읽는 중…"; el.appendChild(s); }
-    var f=frontRune(), h="";
-    ["q","w","e"].forEach(function(k){ h+='<div class="sk" data-k="'+k+'"><div class="k">'+k.toUpperCase()+'</div><div class="n">'+SKD[k].n+'</div><div class="d">'+(f?'<b style="color:'+RCOL[f]+'">'+RN[f]+'</b> '+SKD[k].d[f]:'—')+'</div><div class="cd"></div></div>'; });
-    var rs=resoMatch(); h+='<div class="sk'+(rs?' reso':'')+'" data-k="r"><div class="k">R</div><div class="n">'+(rs?'<span style="color:'+RCOL[Q.stored]+'">공명!</span>':'교환')+'</div><div class="d">'+(rs?SKD.r.reso[Q.stored]:'보관 룬 ↔ 다음 룬<br>둘이 같아지면 공명')+'</div><div class="cd"></div></div>';
+    var h="";
+    ["q","w","e"].forEach(function(k){ var e2=en===k; h+='<div class="sk'+(e2?' reso':'')+'" data-k="'+k+'" style="border-bottom:3px solid '+RCOL[k]+'"><div class="k">'+k.toUpperCase()+'</div><div class="n">'+(e2?'<span style="color:'+RCOL[k]+'">강화! '+SKD[k].en+'</span>':SKD[k].n)+'</div><div class="d">'+(e2?SKD[k].ed:SKD[k].d)+'</div><div class="cd"></div></div>'; });
+    h+='<div class="sk" data-k="r"'+(Q.stored&&Q.act.length?'':' style="opacity:.4"')+'><div class="k">R</div><div class="n">교환</div><div class="d">보관 룬 ↔ 다음 룬<br>둘이 같으면 그 스킬 강화</div><div class="cd"></div></div>';
     $("skills").innerHTML=h; }
-  document.querySelectorAll("#skills .sk").forEach(function(el){ var k=el.getAttribute("data-k"), cd=k==="r"?(resoMatch()?H.rs:0):H[k], c=el.querySelector(".cd"); if(cd>0.05){ c.style.display="flex"; c.textContent=cd.toFixed(cd<1?1:0); } else c.style.display="none"; });
+  document.querySelectorAll("#skills .sk").forEach(function(el){ var k=el.getAttribute("data-k"), cd=k==="r"||enhKey()===k?0:H[k], c=el.querySelector(".cd"); if(cd>0.05){ c.style.display="flex"; c.textContent=cd.toFixed(cd<1?1:0); } else c.style.display="none"; });
 }
 $("skills").addEventListener("pointerdown",function(e){ var el=e.target.closest(".sk"); if(!el) return; e.preventDefault(); cast(el.getAttribute("data-k")); });
 cv.addEventListener("contextmenu",function(e){ e.preventDefault(); });
 window.addEventListener("pointerup",function(e){ if(e.pointerType==="mouse"&&e.button===2) GOTO.held=false; });
-cv.addEventListener("pointermove",function(e){ if(e.pointerType==="mouse"){ AIM.on=true; AIM.x=cam.x+e.clientX*DPR/DOT; AIM.y=cam.y+e.clientY*DPR/DOT; if(GOTO.held){ GOTO.x=AIM.x; GOTO.y=AIM.y+6; } } else if(e.pointerId===JOY.id){ var dx=e.clientX-JOY.ox, dy=e.clientY-JOY.oy, d=Math.hypot(dx,dy), k=d>46?46/d:1; $("joy").firstChild.style.transform="translate("+dx*k+"px,"+dy*k+"px)"; if(d<8){ JOY.vx=JOY.vy=0; } else { var m=Math.min(1,d/46); JOY.vx=dx/d*m; JOY.vy=dy/d*m; } } });
+cv.addEventListener("pointermove",function(e){ if(e.pointerType==="mouse"){ AIM.on=true; AIM.sx=e.clientX; AIM.sy=e.clientY; if(GOTO.held){ GOTO.x=cam.x+e.clientX*DPR/DOT; GOTO.y=cam.y+e.clientY*DPR/DOT+6; } } else if(e.pointerId===JOY.id){ var dx=e.clientX-JOY.ox, dy=e.clientY-JOY.oy, d=Math.hypot(dx,dy), k=d>46?46/d:1; $("joy").firstChild.style.transform="translate("+dx*k+"px,"+dy*k+"px)"; if(d<8){ JOY.vx=JOY.vy=0; } else { var m=Math.min(1,d/46); JOY.vx=dx/d*m; JOY.vy=dy/d*m; } } });
 cv.addEventListener("pointerdown",function(e){ if(e.pointerType==="mouse"){ if(e.button===2&&state==="play"){ GOTO.on=true; GOTO.held=true; GOTO.x=cam.x+e.clientX*DPR/DOT; GOTO.y=cam.y+e.clientY*DPR/DOT+6; FX.push({k:"ring",x:GOTO.x,y:GOTO.y,r0:6,r1:1,c:"#8fe6a0",t:0,life:0.3}); e.preventDefault(); } return; } AIM.on=false; if(JOY.id===null){ JOY.id=e.pointerId; JOY.ox=e.clientX; JOY.oy=e.clientY; JOY.vx=JOY.vy=0; var j=$("joy"); j.style.left=e.clientX+"px"; j.style.top=e.clientY+"px"; j.style.display="block"; j.firstChild.style.transform=""; try{ cv.setPointerCapture(e.pointerId); }catch(er){} } });
 function joyEnd(e){ if(e.pointerId===JOY.id){ JOY.id=null; JOY.vx=JOY.vy=0; $("joy").style.display="none"; } }
 cv.addEventListener("pointerup",joyEnd); cv.addEventListener("pointercancel",joyEnd);
 
 /* ═══════════ 화면 ═══════════ */
 function showTitle(){
-  $("ov").className="on"; $("ov").innerHTML='<div class="card"><h1>룬 순서 <small style="font-size:12px;color:#a39db4">v3</small></h1>'
-    +'<p>룬술사는 <b style="color:var(--fire)">불</b> · <b style="color:var(--ice)">서리</b> · <b style="color:var(--wind)">바람</b> 룬을 읽어 싸운다. 룬은 <b>보관 1칸 + 대기 5칸</b>에 무작위 순서로 놓인다.</p>'
-    +'<p><b>Q · W · E</b> 어떤 스킬을 쓰든 <b>대기 맨 앞 룬</b>이 소모되고, 그 룬에 따라 스킬 효과가 달라진다 — 불은 큰 피해, 서리는 얼림, 바람은 보조.</p>'
-    +'<p><b>R</b>은 보관 룬과 맨 앞 룬을 <b>교환</b>한다 (기다림 없이 언제든). 보관 룬과 맨 앞 룬이 <b>같아지면 R이 공명</b>이 되어 둘을 함께 태우는 큰 기술이 나간다. 같은 룬은 저절로 붙어 나오지 않으니, 순서를 읽고 직접 맞춰야 한다.</p>'
+  $("ov").className="on"; $("ov").innerHTML='<div class="card"><h1>룬 순서 <small style="font-size:12px;color:#a39db4">v4</small></h1>'
+    +'<p>룬술사의 스킬은 셋 — <b style="color:var(--fire)">Q 룬 탄환</b>(피해) · <b style="color:var(--ice)">W 룬 진</b>(얼림) · <b style="color:var(--wind)">E 룬 표식</b>(회복). 머리 위에는 이 세 스킬의 룬이 <b>보관 1칸 + 대기 5칸</b>에 무작위 순서로 놓인다.</p>'
+    +'<p>스킬을 하나 쓸 때마다 <b>대기 맨 앞 룬</b>이 하나씩 사라진다. <b>보관 룬과 맨 앞 룬이 같아지면 그 스킬이 강화</b>된다 — 그 키를 누르면 재사용 대기와 상관없이 강화 스킬이 나간다. 강화는 한 배열에 한 번뿐.</p>'
+    +'<p><b>R</b>은 보관 룬과 맨 앞 룬을 <b>교환</b>한다 (기다림 없이). 어떤 스킬을 강화할지, 몇 번째에 짝이 오는지 읽고 맞춰라.</p>'
     +'<p style="color:var(--fg)">'+(TOUCH?'왼쪽 화면을 끌어 이동 · 오른쪽 버튼으로 스킬 (가까운 적을 자동 조준)':'마우스 오른쪽 클릭(또는 방향키)으로 이동 · 마우스 조준 · Q W E 스킬 · R 교환/공명 · 기본 공격은 자동')+'</p>'
     +'<button class="btn" id="go">시작</button></div>';
   $("go").onclick=start;
 }
-function showDead(){ $("ov").className="on"; $("ov").innerHTML='<div class="card"><h1>쓰러졌다</h1><p style="text-align:center">'+wave+' 웨이브 · 레벨 '+H.lvl+' · '+fmt(H.gold)+' G<br>최고 기록 '+best+' 웨이브</p><button class="btn" id="go">다시</button></div>'; $("go").onclick=start; }
-function start(){ GOTO.on=false; H=newHero(); MOBS=[]; SHOTS=[]; ZONES=[]; MARKS=[]; FX=[]; TXT=[]; COINS=[]; wave=0; waveT=1.5; Q.stored=null; deal(); hudKey=""; state="play"; $("ov").className=""; $("wave").innerHTML="준비"; }
+function showDead(){ if(state!=="dead") return; $("ov").className="on"; $("ov").innerHTML='<div class="card"><h1>쓰러졌다</h1><p style="text-align:center">'+wave+' 웨이브 · 레벨 '+H.lvl+' · '+fmt(H.gold)+' G<br>최고 기록 '+best+' 웨이브</p><button class="btn" id="go">다시</button></div>'; $("go").onclick=start; }
+function start(){ GOTO.on=false; H=newHero(); MOBS=[]; SHOTS=[]; ZONES=[]; MARKS=[]; FX=[]; TXT=[]; COINS=[]; wave=0; waveT=1.5; deal(); hudKey=""; state="play"; $("ov").className=""; $("wave").innerHTML="준비"; }
 
 buildSprites(); buildGround(); fit(); try{ best=+localStorage.getItem("rune_best")||0; }catch(e){}
 H=newHero(); deal(); state="title"; showTitle();
@@ -415,7 +403,7 @@ function frame(now){ requestAnimationFrame(frame); var dt=Math.min(0.05,(now-las
   try{ if(HS>0) HS-=dt; else update(dt); draw(); }catch(e){ console.error(e); window.__err=(window.__err||[]).concat([e.message]); }
   hudT+=dt; if(hudT>0.08){ hudT=0; hud(); } }
 requestAnimationFrame(frame);
-window.__G={H:function(){return H;},Q:Q,MOBS:function(){return MOBS;},cast:cast,start:start,wave:function(){return wave;},state:function(){return state;},KEYS:KEYS,AIM:AIM,SPR:SPR};
+window.__G={H:function(){return H;},Q:Q,enhKey:enhKey,MOBS:function(){return MOBS;},cast:cast,start:start,wave:function(){return wave;},state:function(){return state;},KEYS:KEYS,AIM:AIM,SPR:SPR};
 })();
 </script>
 </body>
