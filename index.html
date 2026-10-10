@@ -54,7 +54,7 @@ body.touch #stat{width:170px}
 <div id="hud">
   <div id="stat"><div class="bar" id="hpb"><i></i></div><div class="bar" id="shb" style="height:4px;margin-top:2px"><i></i></div><div class="bar" id="xpb"><i></i></div><div id="stxt"></div></div>
   <div id="wave"></div>
-  <div id="help">WASD · 방향키 이동 · 마우스로 조준<br>1 2 3 룬 스킬 · R(스페이스) 교환 / 공명<br>기본 공격은 자동</div>
+  <div id="help">마우스 오른쪽 클릭 · 방향키 이동<br>Q W E 룬 스킬 (마우스 쪽으로) · R 교환 / 공명<br>기본 공격은 자동</div>
   <div id="runes"></div>
   <div id="skills"></div>
 </div>
@@ -256,8 +256,10 @@ function qHit(s,m){
 /* ═══════════ 입력 ═══════════ */
 var KEYS={}, AIM={on:false,x:0,y:0}, TOUCH=("ontouchstart" in window)||(window.matchMedia&&matchMedia("(pointer:coarse)").matches), JOY={id:null,ox:0,oy:0,vx:0,vy:0};
 if(TOUCH) document.body.classList.add("touch");
-var MOVE={KeyW:"w",KeyA:"a",KeyS:"s",KeyD:"d",ArrowUp:"w",ArrowLeft:"a",ArrowDown:"s",ArrowRight:"d"}, SKEY={Digit1:"q",Digit2:"w",Digit3:"e",Numpad1:"q",Numpad2:"w",Numpad3:"e",KeyR:"r",Space:"r",Digit4:"r"};
-document.addEventListener("keydown",function(e){ if(MOVE[e.code]){ KEYS[MOVE[e.code]]=1; e.preventDefault(); } else if(SKEY[e.code]){ if(!e.repeat) cast(SKEY[e.code]); e.preventDefault(); } });
+/* 스킬은 Q W E R — 그래서 이동은 방향키 또는 마우스 오른쪽 클릭(누른 곳으로 걸어간다) */
+var MOVE={ArrowUp:"w",ArrowLeft:"a",ArrowDown:"s",ArrowRight:"d"}, SKEY={KeyQ:"q",KeyW:"w",KeyE:"e",KeyR:"r",Space:"r",Digit1:"q",Digit2:"w",Digit3:"e",Digit4:"r"};
+var GOTO={on:false,x:0,y:0,held:false};
+document.addEventListener("keydown",function(e){ if(MOVE[e.code]){ KEYS[MOVE[e.code]]=1; GOTO.on=false; e.preventDefault(); } else if(SKEY[e.code]){ if(!e.repeat) cast(SKEY[e.code]); e.preventDefault(); } });
 document.addEventListener("keyup",function(e){ if(MOVE[e.code]) KEYS[MOVE[e.code]]=0; });
 window.addEventListener("blur",function(){ KEYS={}; });
 
@@ -265,6 +267,7 @@ window.addEventListener("blur",function(){ KEYS={}; });
 function update(dt){
   T0+=dt; if(state!=="play") return;
   var mx=(KEYS.d?1:0)-(KEYS.a?1:0), my=(KEYS.s?1:0)-(KEYS.w?1:0); if(JOY.id!==null){ mx=JOY.vx; my=JOY.vy; }
+  if(!mx&&!my&&GOTO.on){ var gd=Math.hypot(GOTO.x-H.x,GOTO.y-H.y); if(gd<2&&!GOTO.held) GOTO.on=false; else if(gd>=2){ mx=(GOTO.x-H.x)/gd; my=(GOTO.y-H.y)/gd; } }
   var ml=Math.hypot(mx,my), sp=H.spd*(H.haste>0?1.35:1); H.moving=ml>0.1;
   if(H.moving){ var k=Math.min(1,ml); moveEnt(H,mx/ml*k*sp*dt,my/ml*k*sp*dt); if(Math.abs(mx)>0.2) H.face=mx<0?-1:1; }
   ["q","w","e","r4","rs","haste","hit","inv"].forEach(function(f){ if(H[f]>0) H[f]-=dt; });
@@ -378,14 +381,16 @@ function hud(){
     Q.act.forEach(function(r,i){ var d=document.createElement("div"); d.className="rn"+(i===0?" cur":"")+(i===0&&resoMatch()?" reso":""); d.appendChild(runeIcon(r)); el.appendChild(d); });
     if(!Q.act.length){ var s=document.createElement("div"); s.id="rchg"; s.textContent="룬을 다시 읽는 중…"; el.appendChild(s); }
     var f=frontRune(), h="";
-    ["q","w","e"].forEach(function(k){ h+='<div class="sk" data-k="'+k+'"><div class="k">'+{q:1,w:2,e:3}[k]+'</div><div class="n">'+SKD[k].n+'</div><div class="d">'+(f?'<b style="color:'+RCOL[f]+'">'+RN[f]+'</b> '+SKD[k].d[f]:'—')+'</div><div class="cd"></div></div>'; });
+    ["q","w","e"].forEach(function(k){ h+='<div class="sk" data-k="'+k+'"><div class="k">'+k.toUpperCase()+'</div><div class="n">'+SKD[k].n+'</div><div class="d">'+(f?'<b style="color:'+RCOL[f]+'">'+RN[f]+'</b> '+SKD[k].d[f]:'—')+'</div><div class="cd"></div></div>'; });
     var rs=resoMatch(); h+='<div class="sk'+(rs?' reso':'')+'" data-k="r"><div class="k">R</div><div class="n">'+(rs?'<span style="color:'+RCOL[Q.stored]+'">공명!</span>':'교환')+'</div><div class="d">'+(rs?SKD.r.reso[Q.stored]:'보관 룬 ↔ 다음 룬<br>둘이 같아지면 공명')+'</div><div class="cd"></div></div>';
     $("skills").innerHTML=h; }
   document.querySelectorAll("#skills .sk").forEach(function(el){ var k=el.getAttribute("data-k"), cd=k==="r"?(resoMatch()?H.rs:0):H[k], c=el.querySelector(".cd"); if(cd>0.05){ c.style.display="flex"; c.textContent=cd.toFixed(cd<1?1:0); } else c.style.display="none"; });
 }
 $("skills").addEventListener("pointerdown",function(e){ var el=e.target.closest(".sk"); if(!el) return; e.preventDefault(); cast(el.getAttribute("data-k")); });
-cv.addEventListener("pointermove",function(e){ if(e.pointerType==="mouse"){ AIM.on=true; AIM.x=cam.x+e.clientX*DPR/DOT; AIM.y=cam.y+e.clientY*DPR/DOT; } else if(e.pointerId===JOY.id){ var dx=e.clientX-JOY.ox, dy=e.clientY-JOY.oy, d=Math.hypot(dx,dy), k=d>46?46/d:1; $("joy").firstChild.style.transform="translate("+dx*k+"px,"+dy*k+"px)"; if(d<8){ JOY.vx=JOY.vy=0; } else { var m=Math.min(1,d/46); JOY.vx=dx/d*m; JOY.vy=dy/d*m; } } });
-cv.addEventListener("pointerdown",function(e){ if(e.pointerType==="mouse") return; AIM.on=false; if(JOY.id===null){ JOY.id=e.pointerId; JOY.ox=e.clientX; JOY.oy=e.clientY; JOY.vx=JOY.vy=0; var j=$("joy"); j.style.left=e.clientX+"px"; j.style.top=e.clientY+"px"; j.style.display="block"; j.firstChild.style.transform=""; try{ cv.setPointerCapture(e.pointerId); }catch(er){} } });
+cv.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+window.addEventListener("pointerup",function(e){ if(e.pointerType==="mouse"&&e.button===2) GOTO.held=false; });
+cv.addEventListener("pointermove",function(e){ if(e.pointerType==="mouse"){ AIM.on=true; AIM.x=cam.x+e.clientX*DPR/DOT; AIM.y=cam.y+e.clientY*DPR/DOT; if(GOTO.held){ GOTO.x=AIM.x; GOTO.y=AIM.y+6; } } else if(e.pointerId===JOY.id){ var dx=e.clientX-JOY.ox, dy=e.clientY-JOY.oy, d=Math.hypot(dx,dy), k=d>46?46/d:1; $("joy").firstChild.style.transform="translate("+dx*k+"px,"+dy*k+"px)"; if(d<8){ JOY.vx=JOY.vy=0; } else { var m=Math.min(1,d/46); JOY.vx=dx/d*m; JOY.vy=dy/d*m; } } });
+cv.addEventListener("pointerdown",function(e){ if(e.pointerType==="mouse"){ if(e.button===2&&state==="play"){ GOTO.on=true; GOTO.held=true; GOTO.x=cam.x+e.clientX*DPR/DOT; GOTO.y=cam.y+e.clientY*DPR/DOT+6; FX.push({k:"ring",x:GOTO.x,y:GOTO.y,r0:6,r1:1,c:"#8fe6a0",t:0,life:0.3}); e.preventDefault(); } return; } AIM.on=false; if(JOY.id===null){ JOY.id=e.pointerId; JOY.ox=e.clientX; JOY.oy=e.clientY; JOY.vx=JOY.vy=0; var j=$("joy"); j.style.left=e.clientX+"px"; j.style.top=e.clientY+"px"; j.style.display="block"; j.firstChild.style.transform=""; try{ cv.setPointerCapture(e.pointerId); }catch(er){} } });
 function joyEnd(e){ if(e.pointerId===JOY.id){ JOY.id=null; JOY.vx=JOY.vy=0; $("joy").style.display="none"; } }
 cv.addEventListener("pointerup",joyEnd); cv.addEventListener("pointercancel",joyEnd);
 
@@ -393,14 +398,14 @@ cv.addEventListener("pointerup",joyEnd); cv.addEventListener("pointercancel",joy
 function showTitle(){
   $("ov").className="on"; $("ov").innerHTML='<div class="card"><h1>룬 순서</h1>'
     +'<p>룬술사는 <b style="color:var(--fire)">불</b> · <b style="color:var(--ice)">서리</b> · <b style="color:var(--wind)">바람</b> 룬을 읽어 싸운다. 룬은 <b>보관 1칸 + 대기 5칸</b>에 무작위 순서로 놓인다.</p>'
-    +'<p><b>1 · 2 · 3</b> 어떤 스킬을 쓰든 <b>대기 맨 앞 룬</b>이 소모되고, 그 룬에 따라 스킬 효과가 달라진다 — 불은 큰 피해, 서리는 얼림, 바람은 보조.</p>'
+    +'<p><b>Q · W · E</b> 어떤 스킬을 쓰든 <b>대기 맨 앞 룬</b>이 소모되고, 그 룬에 따라 스킬 효과가 달라진다 — 불은 큰 피해, 서리는 얼림, 바람은 보조.</p>'
     +'<p><b>R</b>은 보관 룬과 맨 앞 룬을 <b>교환</b>한다 (기다림 없이 언제든). 보관 룬과 맨 앞 룬이 <b>같아지면 R이 공명</b>이 되어 둘을 함께 태우는 큰 기술이 나간다. 같은 룬은 저절로 붙어 나오지 않으니, 순서를 읽고 직접 맞춰야 한다.</p>'
-    +'<p style="color:var(--fg)">'+(TOUCH?'왼쪽 화면을 끌어 이동 · 오른쪽 버튼으로 스킬 (가까운 적을 자동 조준)':'WASD 이동 · 마우스 조준 · 1 2 3 스킬 · R 교환/공명 · 기본 공격은 자동')+'</p>'
+    +'<p style="color:var(--fg)">'+(TOUCH?'왼쪽 화면을 끌어 이동 · 오른쪽 버튼으로 스킬 (가까운 적을 자동 조준)':'마우스 오른쪽 클릭(또는 방향키)으로 이동 · 마우스 조준 · Q W E 스킬 · R 교환/공명 · 기본 공격은 자동')+'</p>'
     +'<button class="btn" id="go">시작</button></div>';
   $("go").onclick=start;
 }
 function showDead(){ $("ov").className="on"; $("ov").innerHTML='<div class="card"><h1>쓰러졌다</h1><p style="text-align:center">'+wave+' 웨이브 · 레벨 '+H.lvl+' · '+fmt(H.gold)+' G<br>최고 기록 '+best+' 웨이브</p><button class="btn" id="go">다시</button></div>'; $("go").onclick=start; }
-function start(){ H=newHero(); MOBS=[]; SHOTS=[]; ZONES=[]; MARKS=[]; FX=[]; TXT=[]; COINS=[]; wave=0; waveT=1.5; Q.stored=null; deal(); hudKey=""; state="play"; $("ov").className=""; $("wave").innerHTML="준비"; }
+function start(){ GOTO.on=false; H=newHero(); MOBS=[]; SHOTS=[]; ZONES=[]; MARKS=[]; FX=[]; TXT=[]; COINS=[]; wave=0; waveT=1.5; Q.stored=null; deal(); hudKey=""; state="play"; $("ov").className=""; $("wave").innerHTML="준비"; }
 
 buildSprites(); buildGround(); fit(); try{ best=+localStorage.getItem("rune_best")||0; }catch(e){}
 H=newHero(); deal(); state="title"; showTitle();
